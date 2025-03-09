@@ -29,11 +29,9 @@ public class Product {
 	public Double price;
 	public String imgUrl;
 
-	@ManyToMany
-	 @JoinTable(name = "farmers_products", 
-	 			joinColumns = @JoinColumn(name = "product_id"),
-		        inverseJoinColumns = @JoinColumn(name = "farmer_id"))
-	List<Farmer> farmers = new ArrayList<>();
+	@ManyToOne
+    @JoinColumn(name = "farmer_id", nullable = false)
+    private Farmer farmer; 
 	
 	private boolean deleted = false;
 	
@@ -48,17 +46,13 @@ public class Product {
     }
 
 	public ProductDto toDto() {
-        FarmerDto farmerDto = null;
-        if (!farmers.isEmpty()) {
-            farmerDto = farmers.get(0).build(); 
-        }
         return ProductDto.builder()
                 .productId(id)
                 .productName(productName)
                 .quantity(quantity)
                 .price(price)
                 .imgUrl(imgUrl)
-                .farmer(farmerDto)  
+                .farmer(farmer != null ? farmer.build() : null)
                 .build();
     }
 }

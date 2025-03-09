@@ -47,21 +47,28 @@ public class FarmerService implements IFarmerService{
 	}
 
 	@Override
-	public Set<FarmerDto> getFarmersByProduct(Long productId) {
-//		Product product = productRepo.findById(productId).orElseThrow(() ->
-//		new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-//		return product.getFarmers().stream().map(Farmer::build).collect(Collectors.toSet());
-		log.info("Fetching farmers for product ID: {}", productId);
-		Product product = productRepo.findById(productId)
-				.orElseThrow(() -> {
-					log.error("Product not found with ID: {}", productId);
-					return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
-				});
-		Set<FarmerDto> farmers = product.getFarmers().stream()
-				.map(Farmer::build)
-				.collect(Collectors.toSet());
-		log.debug("Found {} farmers for product ID: {}", farmers.size(), productId);
-		return farmers;
+	public FarmerDto getFarmersByProduct(Long productId) {
+		log.info("Fetching farmer for product ID: {}", productId);
+	    if (productId == null) {
+	        log.error("Product ID is null");
+	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product ID must not be null");
+	    }
+
+	    Product product = productRepo.findById(productId)
+	            .orElseThrow(() -> {
+	                log.error("Product not found with ID: {}", productId);
+	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
+	            });
+
+	    Farmer farmer = product.getFarmer();  // Теперь продукт имеет только одного фермера
+	    if (farmer == null) {
+	        log.error("No farmer associated with product ID: {}", productId);
+	        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No farmer associated with this product");
+	    }
+
+	    FarmerDto farmerDto = farmer.build();
+	    log.debug("Found farmer ID: {} for product ID: {}", farmerDto.getFarmerId(), productId);
+	    return farmerDto;
 	}
 
 	@Override

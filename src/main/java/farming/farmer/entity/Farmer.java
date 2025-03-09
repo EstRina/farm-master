@@ -1,5 +1,6 @@
 package farming.farmer.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -7,6 +8,7 @@ import farming.accounting.entity.UserAccount;
 import farming.farmer.dto.AddressDto;
 import farming.farmer.dto.FarmerDto;
 import farming.products.entity.Product;
+import farming.products.entity.SurpriseBag;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,8 +42,11 @@ public class Farmer  {
 	@Embedded
 	Address address;
 	
-	@ManyToMany(mappedBy = "farmers")
-	Set<Product> products;
+	@OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Product> products = new ArrayList<>();  // Каждый фермер имеет свои продукты
+
+    @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SurpriseBag> surpriseBags = new ArrayList<>();  // Каждый фермер имеет свои сумки-сюрпризы
 	
 	Double balance;
 	
@@ -65,6 +70,14 @@ public class Farmer  {
 		            .build();
 	    }
 
+		public void addProduct(Product product) {
+	        products.add(product);
+	        product.setFarmer(this);
+	    }
 
+	    public void addSurpriseBag(SurpriseBag surpriseBag) {
+	        surpriseBags.add(surpriseBag);
+	        surpriseBag.setFarmer(this);
+	    }
 		
 }

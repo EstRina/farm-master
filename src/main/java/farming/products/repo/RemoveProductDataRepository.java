@@ -10,7 +10,7 @@ import farming.products.entity.RemoveProductData;
 
 public interface RemoveProductDataRepository extends JpaRepository<RemoveProductData, Long>{
 
-	@Query("SELECT rpd FROM RemoveProductData rpd JOIN rpd.product p JOIN p.farmers f WHERE f.id = :farmerId")
+	@Query("SELECT rpd FROM RemoveProductData rpd JOIN rpd.product p JOIN p.farmer f WHERE f.id = :farmerId")
     List<RemoveProductData> findByFarmerId(@Param("farmerId") Long farmerId);
 }
 

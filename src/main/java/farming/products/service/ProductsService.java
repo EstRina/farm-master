@@ -84,18 +84,11 @@ public class ProductsService implements IProductsService{
 	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer profile not found");
 	            });
 
-	    Product product;
-	    try {
-	        product = Product.of(productDto);
-	        product.setFarmers(Collections.singletonList(farmer));
-	        productRepo.save(product);
-	    } catch (Exception e) {
-	        log.error("Failed to save product: {}", e.getMessage(), e);
-	        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save product", e);
-	    }
-
+	    Product product = Product.of(productDto);
+	    farmer.addProduct(product);  // Привязываем продукт к фермеру
+	    productRepo.save(product);
 	    log.debug("Product added with ID: {} by farmer: {}", product.getId(), farmer.getFarmerId());
-	    return product.toDto();  // Возвращаем ProductDto с заполненным farmer
+	    return product.toDto();
 	}
 
 	@Override
@@ -108,15 +101,18 @@ public class ProductsService implements IProductsService{
                     log.error("Product not found with ID: {}", productDto.getProductId());
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
                 });
+        
         Farmer farmer = farmerRepo.findByUserAccountLogin(user.getLogin())
                 .orElseThrow(() -> {
                     log.error("Farmer profile not found for user: {}", user.getLogin());
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer profile not found");
                 });
-        if (!product.getFarmers().stream().anyMatch(f -> f.getFarmerId().equals(farmer.getFarmerId()))) {
-            log.warn("Farmer {} does not own product ID {}, access denied", farmer.getFarmerId(), productDto.getProductId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update products you own");
+        
+        if (!product.getFarmer().getFarmerId().equals(farmer.getFarmerId())) {
+            log.warn("User {} does not own product ID {}, access denied", user.getLogin(), productDto.getProductId());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own products");
         }
+        
         if (productDto.getProductName() != null) product.setProductName(productDto.getProductName());
         if (productDto.getQuantity() >= 0) product.setQuantity(productDto.getQuantity());
         if (productDto.getPrice() != null) product.setPrice(productDto.getPrice());
@@ -158,33 +154,20 @@ public class ProductsService implements IProductsService{
 	    }
 	    
 	    log.debug("Checking if farmer ID {} owns product ID {}", farmerId, productId);
-	    if (product.getFarmers() == null || !product.getFarmers().stream().anyMatch(f -> f.getFarmerId().equals(farmerId))) {
-	        log.warn("Farmer ID {} does not own product ID {}", farmerId, productId);
-	        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer doesn't own this product");
-	    }
-	    
-	    log.debug("Removing farmer ID {} from product ID {}", farmerId, productId);
-	    product.getFarmers().removeIf(f -> f.getFarmerId().equals(farmerId));
-	    productRepo.saveAndFlush(product);
-
-	    log.debug("Fetching sales for product ID {}", productId);
+	    if (!product.getFarmer().getFarmerId().equals(farmerId)) {
+            log.warn("Farmer ID {} does not own product ID {}", farmerId, productId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer doesn't own this product");
+        }
 	    List<SaleRecords> sales = saleRecordsRepo.findByProduct(product);
-	    
-	    log.debug("Creating and saving RemoveProductData for product ID {}", productId);
-	    RemoveProductData removeData = RemoveProductData.builder()
-	            .product(product)
-	            .saleRecords(sales)
-	            .build();
-	    removeProductDataRepo.saveAndFlush(removeData);
+        RemoveProductData removeData = RemoveProductData.builder()
+                .product(product)
+                .saleRecords(sales)
+                .build();
+        removeProductDataRepo.save(removeData);
 
-	    if (product.getFarmers().isEmpty()) {
-	        log.info("Marking product ID {} as deleted as no farmers remain", productId);
-	        product.setDeleted(true);  // Помечаем как удалённый вместо удаления
-	        productRepo.save(product);
-	    } else {
-	        log.info("Product ID {} updated, farmer ID {} removed", productId, farmerId);
-	        productRepo.save(product);
-	    }
+        farmer.getProducts().remove(product);  // Удаляем продукт из списка фермера
+        productRepo.delete(product);
+        log.info("Product ID {} removed by farmer ID {}", productId, farmerId);
 	    
 	    return removeData.toDto();
 	}
@@ -239,86 +222,65 @@ public class ProductsService implements IProductsService{
 
 	@Override
     @Transactional
-    public SaleRecordsDto buyProduct(Long customerId, Long productId, int quantity, UserAccount user) {
-		log.info("Customer ID {} buying {} units of product ID {} by user: {}", customerId, quantity, productId, user != null ? user.getLogin() : "null");
-	    if (user == null) {
-	        log.error("User is not authenticated");
-	        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated");
-	    }
-	    checkCustomerRole(user);
-	    
-	    log.debug("Fetching product with ID: {}", productId);
-	    Product product = productRepo.findById(productId)
-	            .orElseThrow(() -> {
-	                log.error("Product not found with ID: {}", productId);
-	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
-	            });
-	    
-	    log.debug("Fetching customer with ID: {}", customerId);
-	    Customer customer = customerRepo.findById(customerId)
-	            .orElseThrow(() -> {
-	                log.error("Customer not found with ID: {}", customerId);
-	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
-	            });
-	    
-	    log.debug("Checking if user {} matches customer ID {}", user.getLogin(), customerId);
-	    if (!customer.getUserAccount().getLogin().equals(user.getLogin())) {
-	        log.warn("User {} is not the customer ID {}, access denied", user.getLogin(), customerId);
-	        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only buy as yourself");
-	    }
-	    
-	    log.debug("Checking farmers for product ID {}", productId);
-	    if (product.getFarmers() == null || product.getFarmers().isEmpty()) {
-	        log.error("No farmers associated with product ID: {}", productId);
-	        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No farmer associated with product");
-	    }
-	    
-	    Farmer farmer = product.getFarmers().stream()
-	            .findFirst()
-	            .orElseThrow(() -> {
-	                log.error("No farmer associated with product ID: {}", productId);
-	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "No farmer associated with product");
-	            });
-	    
-	    log.debug("Checking stock for product ID {}", productId);
-	    if (product.getQuantity() < quantity) {
-	        log.warn("Not enough stock for product ID {}: requested {}, available {}", productId, quantity, product.getQuantity());
-	        throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough stock available");
-	    }
+		public SaleRecordsDto buyProduct(Long customerId, Long productId, int quantity, UserAccount user) {
+	        log.info("Customer ID {} buying {} units of product ID {} by user: {}", customerId, quantity, productId, user != null ? user.getLogin() : "null");
+	        if (user == null) {
+	            log.error("User is not authenticated");
+	            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated");
+	        }
+	        checkCustomerRole(user);
 
-	    double cost = product.getPrice() * quantity;
-	    log.debug("Calculated cost for purchase: {}", cost);
+	        Product product = productRepo.findById(productId)
+	                .orElseThrow(() -> {
+	                    log.error("Product not found with ID: {}", productId);
+	                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
+	                });
 
-	    double customerBalance = customer.getBalance();
-	    if (customerBalance < cost) {
-	        log.warn("Insufficient funds for customer ID {}: required {}, available {}", customerId, cost, customerBalance);
-	        throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
-	    }
-	    
-	    customer.setBalance(customerBalance - cost);
-	    farmer.setBalance(farmer.getBalance() + cost);
-	    
-	    customerRepo.saveAndFlush(customer);
-	    farmerRepo.saveAndFlush(farmer);
-	    
-	    product.setQuantity(product.getQuantity() - quantity);
-	    productRepo.saveAndFlush(product);
+	        Customer customer = customerRepo.findById(customerId)
+	                .orElseThrow(() -> {
+	                    log.error("Customer not found with ID: {}", customerId);
+	                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
+	                });
 
-	    log.debug("Creating sale record for product ID {}", productId);
-	    SaleRecords saleRecord = SaleRecords.builder()
-	            .product(product)
-	            .customer(customer)
-	            .farmer(farmer)
-	            .saleDate(LocalDateTime.now())
-	            .saleQuantity(quantity)
-	            .cost(cost)
-	            .build();
-	    
-	    log.debug("Saving sale record for product ID {}", productId);
-	    saleRecordsRepo.saveAndFlush(saleRecord);
-	    
-	    log.info("Product ID {} bought by customer ID {}, sale recorded with payment", productId, customerId);
-	    return saleRecord.build();
+	        if (!customer.getUserAccount().getLogin().equals(user.getLogin())) {
+	            log.warn("User {} is not the customer ID {}, access denied", user.getLogin(), customerId);
+	            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only buy as yourself");
+	        }
+
+	        if (product.getQuantity() < quantity) {
+	            log.warn("Not enough stock for product ID {}: requested {}, available {}", productId, quantity, product.getQuantity());
+	            throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough stock available");
+	        }
+
+	        double cost = product.getPrice() * quantity;
+	        double customerBalance = customer.getBalance();
+	        if (customerBalance < cost) {
+	            log.warn("Insufficient funds for customer ID {}: required {}, available {}", customerId, cost, customerBalance);
+	            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
+	        }
+
+	        Farmer farmer = product.getFarmer();  // Теперь фермер берётся напрямую из продукта
+	        customer.setBalance(customerBalance - cost);
+	        farmer.setBalance(farmer.getBalance() + cost);
+
+	        customerRepo.save(customer);
+	        farmerRepo.save(farmer);
+
+	        product.setQuantity(product.getQuantity() - quantity);
+	        productRepo.save(product);
+
+	        SaleRecords saleRecord = SaleRecords.builder()
+	                .product(product)
+	                .customer(customer)
+	                .farmer(farmer)
+	                .saleDate(LocalDateTime.now())
+	                .saleQuantity(quantity)
+	                .cost(cost)
+	                .build();
+	        saleRecordsRepo.save(saleRecord);
+
+	        log.info("Product ID {} bought by customer ID {}, sale recorded with payment", productId, customerId);
+	        return saleRecord.build();
     }	
 
 	@Override
@@ -427,13 +389,7 @@ public class ProductsService implements IProductsService{
             throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
         }
 
-        Farmer farmer = surpriseBag.getFarmers().stream()
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.error("No farmer associated with surprise bag ID: {}", surpriseBagId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "No farmer associated with surprise bag");
-                });
-
+        Farmer farmer = surpriseBag.getFarmer();
         customer.setBalance(customerBalance - cost);
         farmer.setBalance(farmer.getBalance() + cost);
         customerRepo.saveAndFlush(customer);
@@ -472,21 +428,18 @@ public class ProductsService implements IProductsService{
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer profile not found");
                 });
 
-        // Создание новой сумки-сюрприза
         SurpriseBag surpriseBag = SurpriseBag.builder()
-                .name("Surprise Bag")  // Название по умолчанию
+                .name("Surprise Bag")
                 .quantity(quantity)
-                .price(5.0)  // Фиксированная цена по умолчанию
+                .price(5.0)
                 .startTime(startTime)
                 .endTime(endTime)
-                .imgUrl("http://example.com/surprise_bag.jpg")  // Пример URL, можно сделать параметром
-                .farmers(Collections.singletonList(farmer))  // Привязываем фермера
-                .build();
+                .imgUrl("http://example.com/surprise_bag.jpg")
+                .farmer(farmer).build();
 
-        // Сохранение в базе
+        farmer.addSurpriseBag(surpriseBag);  
         surpriseBagRepo.save(surpriseBag);
         log.info("Surprise bag created with ID: {} by farmer: {}", surpriseBag.getId(), farmer.getFarmerId());
-
         return surpriseBag;
     }
 
