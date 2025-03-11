@@ -48,14 +48,12 @@ public class Farmer  {
     @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SurpriseBag> surpriseBags = new ArrayList<>();  // Каждый фермер имеет свои сумки-сюрпризы
 	
-	Double balance;
-	
 		public static Farmer of(FarmerDto dto) {
 			return Farmer.builder()
 	                .farmerId(dto.getFarmerId()).phone(dto.getPhone())
 	                .address(dto.getAddress() != null ? new Address(dto.getAddress().getCountry(), dto.getAddress().getCity(), 
 	                		dto.getAddress().getStreet()) : null)
-	                .balance(dto.getBalance()).build();
+	                .build();
 	}
 	
 
@@ -66,7 +64,6 @@ public class Farmer  {
 		            .lastName(userAccount != null ? userAccount.getLastName() : null)
 		            .phone(phone)
 		            .address(address != null ? new AddressDto(address.getCountry(), address.getCity(), address.getStreet()) : null)
-		            .balance(balance)
 		            .build();
 	    }
 

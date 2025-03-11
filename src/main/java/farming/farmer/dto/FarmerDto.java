@@ -19,6 +19,5 @@ public class FarmerDto {
 //	String email;
 	String phone;
 	AddressDto address;
-	Double balance;
 
 }

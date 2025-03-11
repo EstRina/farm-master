@@ -85,7 +85,7 @@ public class ProductsService implements IProductsService{
 	            });
 
 	    Product product = Product.of(productDto);
-	    farmer.addProduct(product);  // Привязываем продукт к фермеру
+	    farmer.addProduct(product);  
 	    productRepo.save(product);
 	    log.debug("Product added with ID: {} by farmer: {}", product.getId(), farmer.getFarmerId());
 	    return product.toDto();
@@ -165,7 +165,7 @@ public class ProductsService implements IProductsService{
                 .build();
         removeProductDataRepo.save(removeData);
 
-        farmer.getProducts().remove(product);  // Удаляем продукт из списка фермера
+        farmer.getProducts().remove(product); 
         productRepo.delete(product);
         log.info("Product ID {} removed by farmer ID {}", productId, farmerId);
 	    
@@ -253,15 +253,13 @@ public class ProductsService implements IProductsService{
 	        }
 
 	        double cost = product.getPrice() * quantity;
-	        double customerBalance = customer.getBalance();
-	        if (customerBalance < cost) {
-	            log.warn("Insufficient funds for customer ID {}: required {}, available {}", customerId, cost, customerBalance);
-	            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
-	        }
+//	        double customerBalance = customer.getBalance();
+//	        if (customerBalance < cost) {
+//	            log.warn("Insufficient funds for customer ID {}: required {}, available {}", customerId, cost, customerBalance);
+//	            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
+//	        }
 
-	        Farmer farmer = product.getFarmer();  // Теперь фермер берётся напрямую из продукта
-	        customer.setBalance(customerBalance - cost);
-	        farmer.setBalance(farmer.getBalance() + cost);
+	        Farmer farmer = product.getFarmer();
 
 	        customerRepo.save(customer);
 	        farmerRepo.save(farmer);
@@ -383,15 +381,9 @@ public class ProductsService implements IProductsService{
         }
 
         double cost = surpriseBag.getPrice();
-        double customerBalance = customer.getBalance();
-        if (customerBalance < cost) {
-            log.warn("Insufficient funds for customer ID {}: required {}, available {}", customerId, cost, customerBalance);
-            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Insufficient funds");
-        }
 
         Farmer farmer = surpriseBag.getFarmer();
-        customer.setBalance(customerBalance - cost);
-        farmer.setBalance(farmer.getBalance() + cost);
+       
         customerRepo.saveAndFlush(customer);
         farmerRepo.saveAndFlush(farmer);
 

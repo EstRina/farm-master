@@ -16,6 +16,6 @@ public interface IFarmerService {
 	void deleteFarmer(Long farmerId);
 	void addProductToFarmer(Long farmerId, Long productId);
 	void removeProductFromFarmer(Long farmerId, Long productId);
-	Double getFarmerBalance(Long farmerId);
+	
 	
 }

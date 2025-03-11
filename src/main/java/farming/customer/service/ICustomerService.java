@@ -19,7 +19,7 @@ public interface ICustomerService {
     CustomerDto updateCustomer(Long customerId, CustomerDto dto);
     void deleteCustomer(Long customerId);
 	Optional<CustomerDto> getCustomerByLogin(String login);
-	CustomerDto topUpBalance(Long customerId, double amount);
+
 	
 	
 	

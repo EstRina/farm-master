@@ -33,7 +33,6 @@ public class CustomerService implements ICustomerService{
         }
         Customer customer = Customer.builder()
                 .userAccount(user)
-                .balance(0.0)  
                 .build();
         customerRepo.save(customer);
         log.info("Customer profile created for login: {}", user.getLogin());
@@ -69,10 +68,7 @@ public class CustomerService implements ICustomerService{
                     log.error("Customer not found with ID: {}", customerId);
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
                 });
-        if (dto.getBalance() >= 0) {
-            customer.setBalance(dto.getBalance());
-            log.debug("Updated balance for customer ID {}: {}", customerId, dto.getBalance());
-        }
+  
         customerRepo.save(customer);
         log.info("Customer updated successfully: {}", customerId);
         return customer.build();
@@ -98,23 +94,5 @@ public class CustomerService implements ICustomerService{
                 .map(Customer::build);
     }
 
-    @Override
-    @Transactional
-    public CustomerDto topUpBalance(Long customerId, double amount) {
-        log.info("Topping up balance for customer ID {} with amount: {}", customerId, amount);
-        if (amount <= 0) {
-            log.error("Amount must be positive: {}", amount);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
-        }
-        Customer customer = customerRepo.findById(customerId)
-                .orElseThrow(() -> {
-                    log.error("Customer not found with ID: {}", customerId);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
-                });
-        double newBalance = customer.getBalance() + amount;
-        customer.setBalance(newBalance);
-        customerRepo.save(customer);
-        log.info("Balance topped up for customer ID {}: new balance {}", customerId, newBalance);
-        return customer.build();
-    }
+    
 }

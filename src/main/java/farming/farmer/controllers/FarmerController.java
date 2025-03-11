@@ -172,14 +172,6 @@ public class FarmerController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{farmerId}/balance")
-    public ResponseEntity<Double> getFarmerBalance(@PathVariable Long farmerId) {
-        log.info("Request to get balance for farmer ID: {}", farmerId);
-        Double balance = farmerService.getFarmerBalance(farmerId);
-        log.debug("Balance for farmer ID {}: {}", farmerId, balance);
-        return ResponseEntity.ok(balance);
-    }
-
     @GetMapping("/me")
     public ResponseEntity<FarmerDto> getCurrentFarmer(@AuthenticationPrincipal UserAccount user) {
         log.info("Fetching current farmer for user: {}", user != null ? user.getLogin() : "null");

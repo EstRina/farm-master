@@ -60,7 +60,7 @@ public class FarmerService implements IFarmerService{
 	                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
 	            });
 
-	    Farmer farmer = product.getFarmer();  // Теперь продукт имеет только одного фермера
+	    Farmer farmer = product.getFarmer();  
 	    if (farmer == null) {
 	        log.error("No farmer associated with product ID: {}", productId);
 	        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No farmer associated with this product");
@@ -85,14 +85,6 @@ public class FarmerService implements IFarmerService{
 	@Override
     @Transactional
     public void createFarmerProfile(UserAccount user) {
-//        if (farmerRepo.existsByUserAccountLogin(user.getLogin())) {
-//            throw new ResponseStatusException(HttpStatus.CONFLICT, "Farmer profile already exists for login: " + user.getLogin());
-//        }
-//        Farmer farmer = Farmer.builder()
-//                .userAccount(user)
-//                .balance(0.0) // Начальный баланс
-//                .build();
-//        farmerRepo.save(farmer);
 		log.info("Creating farmer profile for user: {}", user.getLogin());
 		if (farmerRepo.existsByUserAccountLogin(user.getLogin())) {
 			log.warn("Farmer profile already exists for login: {}", user.getLogin());
@@ -103,7 +95,6 @@ public class FarmerService implements IFarmerService{
 				.phone(user.getPhone())    
                 .email(user.getEmail())
                 .address(user.getAddress())
-				.balance(0.0)
 				.build();
 		farmerRepo.save(farmer);
 		log.info("Farmer profile created for login: {} with phone: {}, email: {}, address: {}", 
@@ -114,13 +105,6 @@ public class FarmerService implements IFarmerService{
 	@Override
 	@Transactional
     public FarmerDto updateFarmer(Long farmerId, FarmerDto dto) {
-//        Farmer farmer = farmerRepo.findById(farmerId)
-//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found"));
-//        if (dto.getPhone() != null) farmer.setPhone(dto.getPhone());
-////        if (dto.getAddress() != null) farmer.setAddress(dto.getAddress());
-//        if (dto.getBalance() != null) farmer.setBalance(dto.getBalance());
-//        farmerRepo.save(farmer);
-//        return farmer.build();
 		log.info("Updating farmer with ID: {}", farmerId);
 		Farmer farmer = farmerRepo.findById(farmerId)
 				.orElseThrow(() -> {
@@ -136,10 +120,6 @@ public class FarmerService implements IFarmerService{
 					dto.getAddress().getCity(), dto.getAddress().getStreet()));
 			log.debug("Updated address for farmer ID {}: {}", farmerId, dto.getAddress());
 		}
-			if (dto.getBalance() != null) {
-			farmer.setBalance(dto.getBalance());
-			log.debug("Updated balance for farmer ID {}: {}", farmerId, dto.getBalance());
-		}
 		farmerRepo.save(farmer);
 		log.info("Farmer updated successfully: {}", farmerId);
 		return farmer.build();
@@ -148,9 +128,6 @@ public class FarmerService implements IFarmerService{
 	@Override
     @Transactional
     public void deleteFarmer(Long farmerId) {
-//        Farmer farmer = farmerRepo.findById(farmerId)
-//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found"));
-//        farmerRepo.delete(farmer);
 		log.info("Deleting farmer with ID: {}", farmerId);
 		Farmer farmer = farmerRepo.findById(farmerId)
 				.orElseThrow(() -> {
@@ -164,12 +141,6 @@ public class FarmerService implements IFarmerService{
 	@Override
 	@Transactional
 	public void addProductToFarmer(Long farmerId, Long productId) {
-//	    Farmer farmer = farmerRepo.findById(farmerId)
-//	            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found"));
-//	    Product product = productRepo.findById(productId)
-//	            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-//	    farmer.getProducts().add(product);
-//	    farmerRepo.save(farmer);
 		log.info("Adding product ID {} to farmer ID {}", productId, farmerId);
 		Farmer farmer = farmerRepo.findById(farmerId)
 				.orElseThrow(() -> {
@@ -190,12 +161,6 @@ public class FarmerService implements IFarmerService{
 	@Override
 	@Transactional
 	public void removeProductFromFarmer(Long farmerId, Long productId) {
-//	    Farmer farmer = farmerRepo.findById(farmerId)
-//	            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found"));
-//	    Product product = productRepo.findById(productId)
-//	            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-//	    farmer.getProducts().remove(product);
-//	    farmerRepo.save(farmer);
 		log.info("Removing product ID {} from farmer ID {}", productId, farmerId);
 		Farmer farmer = farmerRepo.findById(farmerId)
 				.orElseThrow(() -> {
@@ -212,21 +177,5 @@ public class FarmerService implements IFarmerService{
 		log.info("Product ID {} removed from farmer ID {}", productId, farmerId);
 	}
 
-	@Override
-	public Double getFarmerBalance(Long farmerId) {
-//	    return farmerRepo.findById(farmerId)
-//	            .map(Farmer::getBalance)
-//	            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found"));
-		log.info("Fetching balance for farmer ID: {}", farmerId);
-		return farmerRepo.findById(farmerId)
-				.map(farmer -> {
-					log.debug("Balance for farmer ID {}: {}", farmerId, farmer.getBalance());
-					return farmer.getBalance();
-				})
-				.orElseThrow(() -> {
-					log.error("Farmer not found with ID: {}", farmerId);
-					return new ResponseStatusException(HttpStatus.NOT_FOUND, "Farmer not found");
-				});
-	}
 
 }
