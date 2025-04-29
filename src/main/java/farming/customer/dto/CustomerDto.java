@@ -18,5 +18,4 @@ public class CustomerDto {
     String firstName;
     String lastName;
     String email;
-    double balance;
 }

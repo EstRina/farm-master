@@ -68,10 +68,4 @@ public class CustomerController {
         return ResponseEntity.noContent().build();
     }
     
-    @PostMapping("/{customerId}/top-up")
-    public ResponseEntity<CustomerDto> topUpBalance(@PathVariable Long customerId, @RequestParam double amount) {
-        log.info("Request to top up balance for customer ID: {} with amount: {}", customerId, amount);
-        CustomerDto updatedCustomer = customerService.topUpBalance(customerId, amount);
-        return ResponseEntity.ok(updatedCustomer);
-    }
 }

@@ -26,12 +26,9 @@ public class Customer {
     @JoinColumn(name = "login", referencedColumnName = "login")
     private UserAccount userAccount;
 
-    private double balance;
-
     public static Customer of(CustomerDto dto) {
         return Customer.builder()
                 .id(dto.getCustomerId())
-                .balance(dto.getBalance())
                 .build();
     }
 
@@ -42,7 +39,6 @@ public class Customer {
                 .firstName(userAccount != null ? userAccount.getFirstName() : null)
                 .lastName(userAccount != null ? userAccount.getLastName() : null)
                 .email(userAccount != null ? userAccount.getEmail() : null)
-                .balance(balance)
                 .build();
     }
 }

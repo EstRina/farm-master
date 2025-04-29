@@ -29,13 +29,9 @@ public class SurpriseBag {
     private LocalDateTime endTime; // Время окончания
     public String imgUrl;
 
-    @ManyToMany
-    @JoinTable(
-        name = "farmers_surprise_bags",
-        joinColumns = @JoinColumn(name = "surprise_bag_id"),
-        inverseJoinColumns = @JoinColumn(name = "farmer_id")
-    )
-    private List<Farmer> farmers = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "farmer_id", nullable = false)
+    private Farmer farmer;
 
     public boolean isAvailable() {
         LocalDateTime now = LocalDateTime.now();
@@ -48,11 +44,15 @@ public class SurpriseBag {
     }
 
     public SurpriseBagDto build() {
-    	FarmerDto farmerDto = null;
-        if (!farmers.isEmpty()) {
-            farmerDto = farmers.get(0).build(); 
-        }
-    	return SurpriseBagDto.builder().id(id).name(name).price(price).quantity(quantity).startTime(startTime)
-    			.endTime(endTime) .imgUrl(imgUrl).farmer(farmerDto).build();
+        return SurpriseBagDto.builder()
+                .id(id)
+                .name(name)
+                .price(price)
+                .quantity(quantity)
+                .startTime(startTime)
+                .endTime(endTime)
+                .imgUrl(imgUrl)
+                .farmer(farmer != null ? farmer.build() : null)
+                .build();
     }
 }

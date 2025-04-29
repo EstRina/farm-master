@@ -1,5 +1,6 @@
 package farming.farmer.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -7,6 +8,7 @@ import farming.accounting.entity.UserAccount;
 import farming.farmer.dto.AddressDto;
 import farming.farmer.dto.FarmerDto;
 import farming.products.entity.Product;
+import farming.products.entity.SurpriseBag;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,17 +42,18 @@ public class Farmer  {
 	@Embedded
 	Address address;
 	
-	@ManyToMany(mappedBy = "farmers")
-	Set<Product> products;
-	
-	Double balance;
+	@OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Product> products = new ArrayList<>();  // Каждый фермер имеет свои продукты
+
+    @OneToMany(mappedBy = "farmer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SurpriseBag> surpriseBags = new ArrayList<>();  // Каждый фермер имеет свои сумки-сюрпризы
 	
 		public static Farmer of(FarmerDto dto) {
 			return Farmer.builder()
 	                .farmerId(dto.getFarmerId()).phone(dto.getPhone())
 	                .address(dto.getAddress() != null ? new Address(dto.getAddress().getCountry(), dto.getAddress().getCity(), 
 	                		dto.getAddress().getStreet()) : null)
-	                .balance(dto.getBalance()).build();
+	                .build();
 	}
 	
 
@@ -61,10 +64,17 @@ public class Farmer  {
 		            .lastName(userAccount != null ? userAccount.getLastName() : null)
 		            .phone(phone)
 		            .address(address != null ? new AddressDto(address.getCountry(), address.getCity(), address.getStreet()) : null)
-		            .balance(balance)
 		            .build();
 	    }
 
+		public void addProduct(Product product) {
+	        products.add(product);
+	        product.setFarmer(this);
+	    }
 
+	    public void addSurpriseBag(SurpriseBag surpriseBag) {
+	        surpriseBags.add(surpriseBag);
+	        surpriseBag.setFarmer(this);
+	    }
 		
 }
